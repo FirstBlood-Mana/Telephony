@@ -73,7 +73,7 @@ class SmsMethodCallHandler(
 
   private lateinit var phoneNumber: String
 
-  private var requestCode: Int = -1
+  private var requestCode: Int = -1123
 
   override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
     this.result = result
@@ -341,11 +341,11 @@ class SmsMethodCallHandler(
   @RequiresApi(Build.VERSION_CODES.M)
   private fun checkOrRequestPermission(permissions: List<String>, requestCode: Int): Boolean {
     permissionsController.apply {
-      
+
       if (!::activity.isInitialized) {
         return hasRequiredPermissions(permissions)
       }
-      
+
       if (!hasRequiredPermissions(permissions)) {
         requestPermissions(activity, permissions, requestCode)
         return false
@@ -355,27 +355,30 @@ class SmsMethodCallHandler(
   }
 
   override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray): Boolean {
+    if (requestCode != this.requestCode) {
+      permissionsController.isRequestingPermission = false
 
-    permissionsController.isRequestingPermission = false
-
-    val deniedPermissions = mutableListOf<String>()
-    if (requestCode != this.requestCode && !this::action.isInitialized) {
-      return false
-    }
-
-    val allPermissionGranted = grantResults.foldIndexed(true) { i, acc, result ->
-      if (result == PackageManager.PERMISSION_DENIED) {
-        permissions.let { deniedPermissions.add(it[i]) }
+      val deniedPermissions = mutableListOf<String>()
+      if (requestCode != this.requestCode && !this::action.isInitialized) {
+        return false
       }
-      return@foldIndexed acc && result == PackageManager.PERMISSION_GRANTED
-    }
 
-    return if (allPermissionGranted) {
-      execute(action)
-      true
+      val allPermissionGranted = grantResults.foldIndexed(true) { i, acc, result ->
+        if (result == PackageManager.PERMISSION_DENIED) {
+          permissions.let { deniedPermissions.add(it[i]) }
+        }
+        return@foldIndexed acc && result == PackageManager.PERMISSION_GRANTED
+      }
+
+      return if (allPermissionGranted) {
+        execute(action)
+        true
+      } else {
+        onPermissionDenied(deniedPermissions)
+        false
+      }
     } else {
-      onPermissionDenied(deniedPermissions)
-      false
+        return true
     }
   }
 
